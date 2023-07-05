@@ -1,76 +1,64 @@
-import React, { useState } from 'react';
-import {
-  Box,
-  Heading,
-  Input,
-  Button,
-  Text,
-  Container,
-  VStack,
-  Center,
-} from '@chakra-ui/react';
-import './App.css';
+const express = require("express");
+const cors = require("cors");
+const app = express();
+app.use(cors());
+app.use(express.json());
+const { Configuration, OpenAIApi } = require("openai");
+require("dotenv").config();
 
-const App = () => {
-  const [keyword, setKeyword] = useState('');
-  const [shayari, setShayari] = useState('');
+const configuration = new Configuration({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+const openai = new OpenAIApi(configuration);
 
-  const handleKeywordChange = (event) => {
-    setKeyword(event.target.value);
-  };
+app.post("/generate", async (req, res) => {
+  const type = req.query.type;
+  const keyword = req.body.keyword;
+  let completion_text = "";
 
-  const handleGenerateClick = async () => {
-    try {
-      const response = await fetch('http://localhost:8080/generate?type=Shayari', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ keyword }),
-      });
+  if (type === "Quote") {
+    completion_text =
+      "Act as an expert Quote generator. The user will provide you a keyword as an input and you have to generate a Quote in English.";
+  } else if (type === "Shayari") {
+    completion_text =
+      "Act as an expert Shayari generator. The user will provide you a keyword as an input and you have to generate a Shayari in Hindi.";
+  } else if (type === "Story") {
+    completion_text =
+      "Act as an expert Story generator. The user will provide you a keyword as an input and you have to generate a Story in English.";
+  } else if (type === "Joke") {
+    completion_text = "Generate a funny joke.";
+  }
 
-      if (response.ok) {
-        const data = await response.json();
-        setShayari(data.join('\n'));
-      } else {
-        console.log('Error:', response.statusText);
-      }
-    } catch (error) {
-      console.log('Error:', error.message);
+  const messages = [
+    { role: "user", content: keyword },
+    { role: "assistant", content: completion_text },
+  ];
+
+  try {
+    if (!keyword) throw new Error("No input is provided");
+
+    const completion = await openai.createChatCompletion({
+      model: "gpt-3.5-turbo",
+      messages: messages,
+    });
+
+    if (type === "Shayari" || type === "Story") {
+      const generatedText = completion.data.choices[0].message.content;
+      const generatedLines = generatedText.split("\n").filter((line) => line.trim() !== "");
+      console.log(generatedLines);
+      res.json(generatedLines);
+    } else {
+      const generatedText = completion.data.choices[0].message.content;
+      const firstLine = generatedText.split("\n")[0];
+      console.log(firstLine);
+      res.json(firstLine);
     }
-  };
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Something went wrong!" });
+  }
+});
 
-  return (
-    <Center minH="100vh" bg="gray.100">
-      <Container maxW="sm" p={4} bg="white" rounded="md" shadow="md">
-        <VStack spacing={4} align="stretch">
-          <Heading as="h1" size="2xl" textAlign="center">
-            Shayari Generator
-          </Heading>
-          <Input
-            placeholder="Enter a keyword"
-            value={keyword}
-            onChange={handleKeywordChange}
-          />
-          <Button
-            colorScheme="teal"
-            onClick={handleGenerateClick}
-            isDisabled={!keyword}
-          >
-            Generate Shayari
-          </Button>
-          {shayari && (
-            <Box borderWidth="1px" borderRadius="md" p={4}>
-              <Text fontWeight="bold" mb={2}>
-                Generated Shayari:
-              </Text>
-              <Text>{shayari}</Text>
-            </Box>
-          )}
-        </VStack>
-      </Container>
-    </Center>
-  );
-};
-
-export default App;
+app.listen(8080, () => {
+  console.log("Server is running on port 8080");
+});
