@@ -11,7 +11,7 @@ const App = () => {
 
   const handleGenerateClick = async () => {
     try {
-      const response = await fetch('http://localhost:8080/generate?type=Shayari', {
+      const response = await fetch('https://anxious-gilet-ant.cyclic.app/generate?type=Shayari', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -45,7 +45,7 @@ const App = () => {
       {shayari && (
         <div className="shayari-container">
           <h2>Generated Shayari:</h2>
-          <p>{shayari}</p>
+          <h3>{shayari}</h3>
         </div>
       )}
     </div>
